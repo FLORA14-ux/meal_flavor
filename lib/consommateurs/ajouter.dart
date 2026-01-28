@@ -9,28 +9,19 @@ class AjouterPanierPage extends StatefulWidget {
 
 class _AjouterPanierPageState extends State<AjouterPanierPage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _titreController = TextEditingController();
-  final TextEditingController _quantiteController = TextEditingController();
-  final TextEditingController _prixOriginalController = TextEditingController(text: '3000');
-  final TextEditingController _prixReduitController = TextEditingController(text: '1500');
-  final TextEditingController _descriptionController = TextEditingController();
   
-  String _creneauSelectionne = '';
-  final List<String> _creneaux = [
-    '17h00 - 18h00',
-    '18h00 - 19h00',
-    '19h00 - 20h00',
-    '20h00 - 21h00',
-    '21h00 - 22h00',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    if (_creneaux.isNotEmpty) {
-      _creneauSelectionne = _creneaux[1]; // Valeur par défaut
-    }
-  }
+  // Controllers pour les champs de texte
+  final _titreController = TextEditingController();
+  final _quantiteController = TextEditingController();
+  final _prixOriginalController = TextEditingController();
+  final _prixReduitController = TextEditingController();
+  final _heureDebutController = TextEditingController();
+  final _heureFinController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  
+  // Pour afficher le pourcentage de réduction
+  int _reductionPourcentage = 0;
+  bool _showReduction = false;
 
   @override
   void dispose() {
@@ -38,23 +29,27 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
     _quantiteController.dispose();
     _prixOriginalController.dispose();
     _prixReduitController.dispose();
+    _heureDebutController.dispose();
+    _heureFinController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
-  void _creerPanier() {
-    if (_formKey.currentState!.validate()) {
-      // Logique pour créer le panier
-      print('Panier créé avec succès!');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Panier créé avec succès!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      // Retourner en arrière après un délai
-      Future.delayed(const Duration(seconds: 1), () {
-        Navigator.pop(context);
+  // Calculer le pourcentage de réduction
+  void _calculerReduction() {
+    final prixOriginal = double.tryParse(_prixOriginalController.text);
+    final prixReduit = double.tryParse(_prixReduitController.text);
+
+    if (prixOriginal != null && prixReduit != null && prixOriginal > 0) {
+      final reduction = ((prixOriginal - prixReduit) / prixOriginal * 100).round();
+      
+      setState(() {
+        _reductionPourcentage = reduction;
+        _showReduction = true;
+      });
+    } else {
+      setState(() {
+        _showReduction = false;
       });
     }
   }
@@ -62,94 +57,53 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Mode Commerçant'),
+        title: const Text('Ajouter un panier'),
         centerTitle: true,
-        actions: [
-          // Badge Démo
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.orange,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Text(
-              'Démo',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ),
-          // Bouton Déconnexion
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
-        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Titre principal
-              const Text(
-                'Ajouter un panier',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Champ : Titre du panier
+              // Titre du panier
+              _buildSectionTitle(Icons.shopping_bag, 'Titre du panier'),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _titreController,
-                decoration: InputDecoration(
-                  labelText: 'Titre du panier',
+                decoration: const InputDecoration(
                   hintText: 'Ex: Panier surprise boulangerie',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  prefixIcon: const Icon(Icons.title),
+                  border: OutlineInputBorder(),
                   filled: true,
                   fillColor: Colors.white,
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Veuillez entrer un titre pour le panier';
+                    return 'Veuillez entrer un titre';
                   }
                   return null;
                 },
               ),
-              const SizedBox(height: 20),
-
-              // Champ : Quantité disponible
+              
+              const SizedBox(height: 24),
+              
+              // Quantité disponible
+              _buildSectionTitle(Icons.numbers, 'Quantité disponible'),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _quantiteController,
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Quantité disponible',
+                decoration: const InputDecoration(
                   hintText: 'Ex: 5',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  prefixIcon: const Icon(Icons.numbers),
+                  border: OutlineInputBorder(),
                   filled: true,
                   fillColor: Colors.white,
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Veuillez entrer la quantité disponible';
+                    return 'Veuillez entrer une quantité';
                   }
                   if (int.tryParse(value) == null) {
                     return 'Veuillez entrer un nombre valide';
@@ -157,67 +111,145 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
                   return null;
                 },
               ),
-              const SizedBox(height: 20),
-
-              // Section Prix
-              const Text(
-                'Prix',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
               
+              const SizedBox(height: 24),
+              
+              // Prix original et prix réduit
               Row(
                 children: [
-                  // Prix original
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSectionTitle(Icons.attach_money, 'Prix original (FCFA)'),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _prixOriginalController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            hintText: '3000',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                          onChanged: (value) => _calculerReduction(),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Requis';
+                            }
+                            if (double.tryParse(value) == null) {
+                              return 'Nombre invalide';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSectionTitle(Icons.attach_money, 'Prix réduit (FCFA)'),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _prixReduitController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            hintText: '1500',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                          onChanged: (value) => _calculerReduction(),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Requis';
+                            }
+                            if (double.tryParse(value) == null) {
+                              return 'Nombre invalide';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              // Affichage de la réduction
+              if (_showReduction) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _reductionPourcentage < 30
+                        ? Colors.red[50]
+                        : Colors.orange[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _reductionPourcentage < 30
+                          ? Colors.red[200]!
+                          : Colors.orange[200]!,
+                    ),
+                  ),
+                  child: Text(
+                    'Réduction : -$_reductionPourcentage%',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: _reductionPourcentage < 30
+                          ? Colors.red[700]
+                          : Colors.orange[700],
+                    ),
+                  ),
+                ),
+              ],
+              
+              const SizedBox(height: 24),
+              
+              // Créneau de collecte
+              _buildSectionTitle(Icons.access_time, 'Créneau de collecte'),
+              const SizedBox(height: 8),
+              Row(
+                children: [
                   Expanded(
                     child: TextFormField(
-                      controller: _prixOriginalController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Prix original (FCFA)',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        prefixIcon: const Icon(Icons.money),
+                      controller: _heureDebutController,
+                      decoration: const InputDecoration(
+                        hintText: '--:--',
+                        border: OutlineInputBorder(),
                         filled: true,
                         fillColor: Colors.white,
                       ),
+                      readOnly: true,
+                      onTap: () => _selectTime(context, _heureDebutController),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Veuillez entrer un prix';
-                        }
-                        if (int.tryParse(value) == null) {
-                          return 'Prix invalide';
+                          return 'Requis';
                         }
                         return null;
                       },
                     ),
                   ),
                   const SizedBox(width: 16),
-                  
-                  // Prix réduit
                   Expanded(
                     child: TextFormField(
-                      controller: _prixReduitController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Prix réduit (FCFA)',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        prefixIcon: const Icon(Icons.price_check),
+                      controller: _heureFinController,
+                      decoration: const InputDecoration(
+                        hintText: '--:--',
+                        border: OutlineInputBorder(),
                         filled: true,
                         fillColor: Colors.white,
                       ),
+                      readOnly: true,
+                      onTap: () => _selectTime(context, _heureFinController),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Veuillez entrer un prix';
-                        }
-                        if (int.tryParse(value) == null) {
-                          return 'Prix invalide';
+                          return 'Requis';
                         }
                         return null;
                       },
@@ -226,158 +258,79 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
                 ],
               ),
               
-              // Afficher la réduction en pourcentage
-              if (_prixOriginalController.text.isNotEmpty && 
-                  _prixReduitController.text.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'Réduction: ${_calculerReduction()}%',
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+              const SizedBox(height: 24),
               
-              const SizedBox(height: 20),
-
-              // Champ : Créneau de collecte
-              const Text(
-                'Créneau de collecte',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              
-              DropdownButtonFormField<String>(
-                value: _creneauSelectionne,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  prefixIcon: const Icon(Icons.access_time),
-                ),
-                items: _creneaux.map((String creneau) {
-                  return DropdownMenuItem<String>(
-                    value: creneau,
-                    child: Text(creneau),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _creneauSelectionne = newValue!;
-                  });
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Veuillez sélectionner un créneau';
-                  }
-                  return null;
-                },
-              ),
-              
-              const SizedBox(height: 20),
-
-              // Champ : Description
+              // Description (optionnelle)
               const Text(
                 'Description (optionnelle)',
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 8),
-              
-              Text(
-                'Décrivez le contenu possible du panier...',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 12),
-              
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: 'Ex: Pain, viennoiseries, pâtisseries de la journée...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                decoration: const InputDecoration(
+                  hintText: 'Décrivez le contenu possible du panier...',
+                  border: OutlineInputBorder(),
                   filled: true,
                   fillColor: Colors.white,
                 ),
               ),
               
-              const SizedBox(height: 30),
-
-              // Bouton Créer le panier
+              const SizedBox(height: 24),
+              
+              // Bouton créer
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _creerPanier,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.green,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   child: const Text(
                     'Créer le panier',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                 ),
               ),
               
-              const SizedBox(height: 20),
-
-              // Information
+              const SizedBox(height: 16),
+              
+              // Information en bas
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue[100]!),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue[200]!),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.info, color: Colors.blue),
-                        SizedBox(width: 8),
-                        Text(
-                          'Information',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
-                          ),
+                    Icon(Icons.info_outline, color: Colors.blue[700]),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Les paniers seront automatiquement visibles par les clients dans la zone de collecte définie. Assurez-vous d\'avoir les produits disponibles avant de créer le panier.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[900],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Les paniers seront automatiquement visibles par les clients dans la zone de collecte définie. Assurez-vous d\'avoir les produits disponibles avant de créer le panier.',
-                      style: TextStyle(
-                        color: Colors.grey[700],
                       ),
                     ),
                   ],
                 ),
               ),
-              
-              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -385,17 +338,60 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
     );
   }
 
-  String _calculerReduction() {
-    try {
-      double prixOriginal = double.parse(_prixOriginalController.text);
-      double prixReduit = double.parse(_prixReduitController.text);
+  Widget _buildSectionTitle(IconData icon, String title) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: Colors.grey[700]),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _selectTime(BuildContext context, TextEditingController controller) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    
+    if (picked != null) {
+      setState(() {
+        controller.text = picked.format(context);
+      });
+    }
+  }
+
+  //  : Retourne le panier créé
+  void _creerPanier() {
+    if (_formKey.currentState!.validate()) {
+      // Créer le nouveau panier
+      final nouveauPanier = {
+        'id': DateTime.now().millisecondsSinceEpoch.toString(), // ID unique
+        'nom': _titreController.text,
+        'heureRetrait': '${_heureDebutController.text} - ${_heureFinController.text}',
+        'disponibles': int.parse(_quantiteController.text),
+        'vendus': 0,
+        'prixOriginal': double.parse(_prixOriginalController.text).toInt(),
+        'prixReduit': double.parse(_prixReduitController.text).toInt(),
+        'actif': true,
+      };
       
-      if (prixOriginal <= 0) return '0';
+      // Afficher message de succès
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Panier créé avec succès !'),
+          backgroundColor: Colors.green,
+        ),
+      );
       
-      double reduction = ((prixOriginal - prixReduit) / prixOriginal) * 100;
-      return reduction.toStringAsFixed(0);
-    } catch (e) {
-      return '0';
+      // Retourner le panier créé à la page précédente
+      Navigator.pop(context, nouveauPanier);
     }
   }
 }

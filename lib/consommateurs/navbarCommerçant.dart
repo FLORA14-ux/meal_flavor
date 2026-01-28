@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:meal_flavor/consommateurs/accueil.dart';
 import 'package:meal_flavor/consommateurs/scanner.dart'; // Vérifie que le code que tu as posté est BIEN dans ce fichier
 import 'package:meal_flavor/consommateurs/profil.dart';
-//import 'package:meal_flavor/consommateurs/stock.dart';
+import 'package:meal_flavor/consommateurs/stock.dart';
 import 'package:meal_flavor/consommateurs/ajouter.dart';
 
 class MainNavigationCommercant extends StatefulWidget {
@@ -19,7 +19,7 @@ class _MainNavigationCommercantState extends State<MainNavigationCommercant> {
     const DashboardCommercant(), // Accueil
     const AjouterPanierPage(),  // Ajouter
     const ScannerPage(), // Scanner (Central)
-    const Center(child: Text("Gestion du Stock")),          // Stock
+    const GestionStockPage(),          // Stock
     const ProfilCommercantPage(),  // Profil
   ];
 
