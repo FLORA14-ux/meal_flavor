@@ -7,6 +7,12 @@ import 'package:meal_flavor/clients/accueil.dart';
 import 'package:meal_flavor/clients/carte.dart';
 // ignore: unused_import
 import 'package:meal_flavor/clients/panier.dart';
+// ignore: unused_import
+import 'package:meal_flavor/clients/profil.dart';
+// ignore: unused_import
+import 'package:meal_flavor/clients/detail_panier.dart';
+// ignore: unused_import
+import 'package:meal_flavor/clients/commandes.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -23,7 +29,7 @@ class _MainNavigationState extends State<MainNavigation> {
     const AccueilPage(), // Ta vraie page maintenant !
     const CartePage(),
     const PanierPage(),
-    const Center(child: Text("Profil")),
+    const ProfilPage(),
   ];
 
   @override

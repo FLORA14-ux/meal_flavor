@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+
 class NavbarClient extends StatelessWidget {
   final int currentIndex;
   final Function(int) onIndexChanged;
