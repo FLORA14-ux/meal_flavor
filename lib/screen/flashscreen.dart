@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../clients/MainNavigation.dart'; // Vérifie bien que le chemin vers ton fichier est correct
+import 'package:meal_flavor/auth_page.dart'; // Vérifie bien que le chemin vers ton fichier est correct
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,7 +19,7 @@ class _SplashScreenState extends State<SplashScreen> {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const MainNavigation()),
+          MaterialPageRoute(builder: (context) => const AuthPage()),
         );
       }
     });
