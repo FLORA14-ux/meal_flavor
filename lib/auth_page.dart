@@ -28,7 +28,7 @@ class _AuthPageState extends State<AuthPage> {
             ),
             const SizedBox(height: 20),
             const Text(
-              "Anti-Gaspi Togo",
+              "Meal Flavor",
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             const Text(
