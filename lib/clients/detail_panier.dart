@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meal_flavor/clients/paiement.dart';
 import 'panier.dart';
 
 class DetailPanierPage extends StatelessWidget {
@@ -211,14 +212,13 @@ class DetailPanierPage extends StatelessWidget {
         ),
         child: ElevatedButton(
           onPressed: () {
-            // TODO: Logique de réservation
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Panier "${panier.nom}" réservé !'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          },
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => PaiementPage(panier: panier), // On passe l'objet complet
+    ),
+  );
+},
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,
             padding: const EdgeInsets.symmetric(vertical: 16),
