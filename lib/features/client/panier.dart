@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:meal_flavor/clients/commandes.dart';
+import 'package:meal_flavor/features/client/commandes.dart';
 
 class Panier {
   final String id;

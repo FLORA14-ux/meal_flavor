@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:meal_flavor/consommateurs/accueil.dart';
-import 'package:meal_flavor/consommateurs/scanner.dart'; // Vérifie que le code que tu as posté est BIEN dans ce fichier
-import 'package:meal_flavor/consommateurs/profil.dart';
-import 'package:meal_flavor/consommateurs/stock.dart';
-import 'package:meal_flavor/consommateurs/ajouter.dart';
+import 'package:meal_flavor/features/merchant/accueil.dart';
+import 'package:meal_flavor/features/merchant/scanner.dart'; // Vérifie que le code que tu as posté est BIEN dans ce fichier
+import 'package:meal_flavor/features/profile/consumer_profil.dart';
+import 'package:meal_flavor/features/merchant/stock.dart';
+import 'package:meal_flavor/features/merchant/ajouter.dart';
 
 class MainNavigationCommercant extends StatefulWidget {
   const MainNavigationCommercant({super.key});

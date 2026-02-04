@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:meal_flavor/clients/navbarClient.dart'; // Import de ta nouvelle navbar
+import 'package:meal_flavor/features/client/navbar_client.dart'; // Import de ta nouvelle navbar
 // Importe tes pages ici dès qu'elles sont créées :
 // ignore: unused_import
-import 'package:meal_flavor/clients/accueil.dart'; 
+import 'package:meal_flavor/features/home/accueil.dart'; 
 // ignore: unused_import
-import 'package:meal_flavor/clients/carte.dart';
+import 'package:meal_flavor/features/client/carte.dart';
 // ignore: unused_import
-import 'package:meal_flavor/clients/panier.dart';
+import 'package:meal_flavor/features/client/panier.dart';
 // ignore: unused_import
-import 'package:meal_flavor/clients/profil.dart';
+import 'package:meal_flavor/features/profile/client_profil.dart';
 // ignore: unused_import
-import 'package:meal_flavor/clients/detail_panier.dart';
+import 'package:meal_flavor/features/client/detail_panier.dart';
 // ignore: unused_import
-import 'package:meal_flavor/clients/commandes.dart';
+import 'package:meal_flavor/features/client/commandes.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});

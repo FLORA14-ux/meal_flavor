@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:meal_flavor/clients/paiement.dart';
+import 'package:meal_flavor/features/client/paiement.dart';
 import 'panier.dart';
 
 class DetailPanierPage extends StatelessWidget {

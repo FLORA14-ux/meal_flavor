@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'categorie.dart';
-import 'panier.dart';
-import 'detail_panier.dart';
+import 'package:meal_flavor/shared/widgets/categorie.dart';
+import 'package:meal_flavor/features/client/panier.dart';
+import 'package:meal_flavor/features/client/detail_panier.dart';
 
 class CategoryItem {
   final String titre;

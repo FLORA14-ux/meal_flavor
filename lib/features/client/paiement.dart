@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'panier.dart'; // Import de ton modèle
-import 'package:meal_flavor/clients/confirmation.dart'; // Import de la page QR Code
+import 'package:meal_flavor/features/client/confirmation.dart'; // Import de la page QR Code
 
 class PaiementPage extends StatelessWidget {
   final Panier panier; // On utilise l'objet complet au lieu de simples variables

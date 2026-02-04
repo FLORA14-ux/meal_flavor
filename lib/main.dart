@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screen/flashscreen.dart';
+import 'features/splash/splash_screen.dart';
 // Importe tes pages réelles ici
 // import 'package:ton_projet/acceuil.dart';
 // import 'package:ton_projet/carte.dart';
