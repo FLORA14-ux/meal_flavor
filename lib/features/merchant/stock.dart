@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'ajouter.dart';
+import 'package:meal_flavor/features/merchant/ajouter.dart';
+import 'package:meal_flavor/features/merchant/merchant_basket.dart';
+import 'package:meal_flavor/features/merchant/merchant_basket_service.dart';
+import 'package:meal_flavor/features/merchant/merchant_service.dart';
 
 class GestionStockPage extends StatefulWidget {
   const GestionStockPage({super.key});
@@ -9,44 +12,59 @@ class GestionStockPage extends StatefulWidget {
 }
 
 class _GestionStockPageState extends State<GestionStockPage> {
-  // Données de test pour les paniers du commerçant
-  List<Map<String, dynamic>> _paniers = [
-    {
-      'id': '1',
-      'nom': 'Panier surprise boulangerie',
-      'heureRetrait': '18h00 - 19h30',
-      'disponibles': 8,
-      'vendus': 7,
-      'prixOriginal': 3000,
-      'prixReduit': 1500,
-      'actif': true,
-    },
-    {
-      'id': '2',
-      'nom': 'Viennoiseries du jour',
-      'heureRetrait': '16h00 - 18h00',
-      'disponibles': 5,
-      'vendus': 3,
-      'prixOriginal': 2000,
-      'prixReduit': 1000,
-      'actif': true,
-    },
-    {
-      'id': '3',
-      'nom': 'Pains et croissants',
-      'heureRetrait': '14h00 - 16h00',
-      'disponibles': 0,
-      'vendus': 10,
-      'prixOriginal': 2500,
-      'prixReduit': 1200,
-      'actif': false,
-    },
-  ];
+  final _merchantService = MerchantService();
+  final _basketService = MerchantBasketService();
 
-  // Calculer les statistiques
-  int get _totalActifs => _paniers.where((p) => p['actif'] == true).length;
-  int get _totalDisponibles => _paniers.fold(0, (sum, p) => sum + (p['disponibles'] as int));
-  int get _totalVendus => _paniers.fold(0, (sum, p) => sum + (p['vendus'] as int));
+  bool _isLoading = false;
+  String? _errorMessage;
+  List<MerchantBasket> _baskets = [];
+  String? _merchantId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final merchant = await _merchantService.getMyMerchant();
+      final merchantId = merchant['id']?.toString();
+      if (merchantId == null || merchantId.isEmpty) {
+        throw Exception('Profil commerçant introuvable');
+      }
+
+      final baskets = await _basketService.fetchMyBaskets(merchantId: merchantId);
+      if (!mounted) return;
+      setState(() {
+        _merchantId = merchantId;
+        _baskets = baskets;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString().replaceAll('Exception: ', '');
+      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  List<MerchantBasket> get _activeBaskets =>
+      _baskets.where((b) => b.status == 'AVAILABLE').toList();
+
+  List<MerchantBasket> get _inactiveBaskets =>
+      _baskets.where((b) => b.status != 'AVAILABLE').toList();
+
+  int get _totalActifs => _activeBaskets.length;
+  int get _totalDisponibles =>
+      _baskets.fold(0, (sum, b) => sum + b.availableQuantity);
+  int get _totalVendus => _baskets.fold(0, (sum, b) => sum + b.sold);
 
   @override
   Widget build(BuildContext context) {
@@ -55,67 +73,83 @@ class _GestionStockPageState extends State<GestionStockPage> {
         title: const Text('Gestion des stocks'),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Statistiques en haut
-            _buildStatistiques(),
-            
-            const SizedBox(height: 24),
-            
-            // Titre section paniers actifs
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Paniers actifs',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+                        const SizedBox(height: 12),
+                        Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadData,
+                          child: const Text('Réessayer'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildStatistiques(),
+                      const SizedBox(height: 24),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Paniers actifs',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (_activeBaskets.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text('Aucun panier actif'),
+                        )
+                      else
+                        ..._activeBaskets.map((panier) => _buildPanierCard(panier, true)),
+                      const SizedBox(height: 24),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Paniers inactifs',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (_inactiveBaskets.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text('Aucun panier inactif'),
+                        )
+                      else
+                        ..._inactiveBaskets.map((panier) => _buildPanierCard(panier, false)),
+                      _buildAstuce(),
+                      const SizedBox(height: 24),
+                    ],
                   ),
                 ),
-              ),
-            ),
-            
-            const SizedBox(height: 12),
-            
-            // Liste des paniers actifs
-            ..._paniers
-                .where((p) => p['actif'] == true)
-                .map((panier) => _buildPanierCard(panier, true)),
-            
-            const SizedBox(height: 24),
-            
-            // Titre section paniers inactifs
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Paniers inactifs',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 12),
-            
-            // Liste des paniers inactifs
-            ..._paniers
-                .where((p) => p['actif'] == false)
-                .map((panier) => _buildPanierCard(panier, false)),
-            
-            // Astuce en bas
-            _buildAstuce(),
-            
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
     );
   }
 
@@ -146,7 +180,6 @@ class _GestionStockPageState extends State<GestionStockPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              // ✅ Bouton Ajouter
               ElevatedButton.icon(
                 onPressed: _ajouterNouveauPanier,
                 icon: const Icon(Icons.add, size: 18, color: Colors.white),
@@ -214,7 +247,7 @@ class _GestionStockPageState extends State<GestionStockPage> {
     );
   }
 
-  Widget _buildPanierCard(Map<String, dynamic> panier, bool estActif) {
+  Widget _buildPanierCard(MerchantBasket panier, bool estActif) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 2,
@@ -226,13 +259,12 @@ class _GestionStockPageState extends State<GestionStockPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // En-tête avec nom et badge
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
                   child: Text(
-                    panier['nom'],
+                    panier.title,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -259,16 +291,13 @@ class _GestionStockPageState extends State<GestionStockPage> {
                 ),
               ],
             ),
-            
             const SizedBox(height: 12),
-            
-            // Heure
             Row(
               children: [
                 Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
                 const SizedBox(width: 4),
                 Text(
-                  panier['heureRetrait'],
+                  panier.pickupWindow,
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[600],
@@ -276,10 +305,7 @@ class _GestionStockPageState extends State<GestionStockPage> {
                 ),
               ],
             ),
-            
             const SizedBox(height: 16),
-            
-            // Disponibles et Vendus
             Row(
               children: [
                 Expanded(
@@ -295,7 +321,7 @@ class _GestionStockPageState extends State<GestionStockPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${panier['disponibles']}',
+                        '${panier.availableQuantity}',
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -317,7 +343,7 @@ class _GestionStockPageState extends State<GestionStockPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${panier['vendus']}',
+                        '${panier.sold}',
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -328,14 +354,11 @@ class _GestionStockPageState extends State<GestionStockPage> {
                 ),
               ],
             ),
-            
             const SizedBox(height: 16),
-            
-            // Prix
             Row(
               children: [
                 Text(
-                  '${panier['prixOriginal']} FCFA',
+                  '${panier.originalPrice.toInt()} FCFA',
                   style: TextStyle(
                     fontSize: 14,
                     decoration: TextDecoration.lineThrough,
@@ -344,7 +367,7 @@ class _GestionStockPageState extends State<GestionStockPage> {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  '${panier['prixReduit']} FCFA',
+                  '${panier.discountedPrice.toInt()} FCFA',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -353,18 +376,13 @@ class _GestionStockPageState extends State<GestionStockPage> {
                 ),
               ],
             ),
-            
             const SizedBox(height: 16),
-            
-            // Boutons d'action
             if (estActif)
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        _desactiverPanier(panier['id']);
-                      },
+                      onPressed: () => _desactiverPanier(panier),
                       icon: Icon(Icons.block, size: 18, color: Colors.orange[700]),
                       label: Text(
                         'Désactiver',
@@ -378,9 +396,7 @@ class _GestionStockPageState extends State<GestionStockPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        // TODO: Ouvrir formulaire de modification
-                      },
+                      onPressed: () {},
                       icon: const Icon(Icons.edit, size: 18, color: Colors.white),
                       label: const Text(
                         'Modifier',
@@ -398,9 +414,7 @@ class _GestionStockPageState extends State<GestionStockPage> {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        _reactiverPanier(panier['id']);
-                      },
+                      onPressed: () => _reactiverPanier(panier),
                       icon: const Icon(Icons.visibility, size: 18, color: Colors.white),
                       label: const Text(
                         'Réactiver',
@@ -413,43 +427,10 @@ class _GestionStockPageState extends State<GestionStockPage> {
                   ),
                   const SizedBox(width: 12),
                   IconButton(
-                    onPressed: () {
-                      _supprimerPanier(panier['id']);
-                    },
+                    onPressed: () => _supprimerPanier(panier),
                     icon: const Icon(Icons.delete, color: Colors.red),
                   ),
                 ],
-              ),
-            
-            // Message pour paniers vendus aujourd'hui
-            if (!estActif && panier['vendus'] > 0)
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      'Vendus aujourd\'hui',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      '${panier['vendus']} paniers',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green[700],
-                      ),
-                    ),
-                  ],
-                ),
               ),
           ],
         ),
@@ -472,7 +453,7 @@ class _GestionStockPageState extends State<GestionStockPage> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Désactivez vos paniers lorsqu\'ils sont épuisés pour éviter les déceptions. Vous pourrez les réactiver quand vous le souhaitez.',
+              'Désactivez vos paniers lorsqu\'ils sont épuisés pour éviter les déceptions.',
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.blue[900],
@@ -484,86 +465,97 @@ class _GestionStockPageState extends State<GestionStockPage> {
     );
   }
 
-  // Fonction pour désactiver un panier
-  void _desactiverPanier(String id) {
-    setState(() {
-      final index = _paniers.indexWhere((p) => p['id'] == id);
-      if (index != -1) {
-        _paniers[index]['actif'] = false;
-      }
-    });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Panier désactivé avec succès'),
-        backgroundColor: Colors.orange,
-      ),
-    );
+  Future<void> _desactiverPanier(MerchantBasket panier) async {
+    try {
+      final updated = await _basketService.updateStatus(id: panier.id, status: 'SOLD_OUT');
+      setState(() {
+        _baskets = _baskets.map((b) => b.id == updated.id ? updated : b).toList();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Panier désactivé avec succès'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+      );
+    }
   }
 
-  // Fonction pour réactiver un panier
-  void _reactiverPanier(String id) {
-    setState(() {
-      final index = _paniers.indexWhere((p) => p['id'] == id);
-      if (index != -1) {
-        _paniers[index]['actif'] = true;
-      }
-    });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Panier réactivé avec succès'),
-        backgroundColor: Colors.green,
-      ),
-    );
+  Future<void> _reactiverPanier(MerchantBasket panier) async {
+    try {
+      final updated = await _basketService.updateStatus(id: panier.id, status: 'AVAILABLE');
+      setState(() {
+        _baskets = _baskets.map((b) => b.id == updated.id ? updated : b).toList();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Panier réactivé avec succès'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+      );
+    }
   }
 
-  // Fonction pour supprimer un panier
-  void _supprimerPanier(String id) {
-    showDialog(
+  Future<void> _supprimerPanier(MerchantBasket panier) async {
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Supprimer le panier'),
         content: const Text('Êtes-vous sûr de vouloir supprimer ce panier ?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('Annuler'),
           ),
           TextButton(
-            onPressed: () {
-              setState(() {
-                _paniers.removeWhere((p) => p['id'] == id);
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Panier supprimé'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            },
+            onPressed: () => Navigator.pop(context, true),
             child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
+
+    if (confirm != true) return;
+
+    try {
+      await _basketService.deleteBasket(panier.id);
+      setState(() {
+        _baskets.removeWhere((b) => b.id == panier.id);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Panier supprimé'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+      );
+    }
   }
 
-  // Fonction pour ajouter un nouveau panier
-  void _ajouterNouveauPanier() async {
-    final nouveauPanier = await Navigator.push(
+  Future<void> _ajouterNouveauPanier() async {
+    final basket = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => const AjouterPanierPage(),
       ),
     );
-    
-    // Si un panier a été créé, l'ajouter à la liste
-    if (nouveauPanier != null) {
+
+    if (basket is MerchantBasket) {
       setState(() {
-        _paniers.add(nouveauPanier);
+        _baskets = [basket, ..._baskets];
       });
+    } else if (_merchantId != null) {
+      await _loadData();
     }
   }
 }

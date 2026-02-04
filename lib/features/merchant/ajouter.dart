@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meal_flavor/features/merchant/merchant_basket_service.dart';
 
 class AjouterPanierPage extends StatefulWidget {
   const AjouterPanierPage({super.key});
@@ -9,8 +10,8 @@ class AjouterPanierPage extends StatefulWidget {
 
 class _AjouterPanierPageState extends State<AjouterPanierPage> {
   final _formKey = GlobalKey<FormState>();
-  
-  // Controllers pour les champs de texte
+  final _basketService = MerchantBasketService();
+
   final _titreController = TextEditingController();
   final _quantiteController = TextEditingController();
   final _prixOriginalController = TextEditingController();
@@ -18,10 +19,11 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
   final _heureDebutController = TextEditingController();
   final _heureFinController = TextEditingController();
   final _descriptionController = TextEditingController();
-  
-  // Pour afficher le pourcentage de réduction
+
+  String _selectedCategory = 'SWEET';
   int _reductionPourcentage = 0;
   bool _showReduction = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -35,14 +37,12 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
     super.dispose();
   }
 
-  // Calculer le pourcentage de réduction
   void _calculerReduction() {
     final prixOriginal = double.tryParse(_prixOriginalController.text);
     final prixReduit = double.tryParse(_prixReduitController.text);
 
     if (prixOriginal != null && prixReduit != null && prixOriginal > 0) {
       final reduction = ((prixOriginal - prixReduit) / prixOriginal * 100).round();
-      
       setState(() {
         _reductionPourcentage = reduction;
         _showReduction = true;
@@ -68,7 +68,27 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Titre du panier
+              _buildSectionTitle(Icons.category_outlined, 'Catégorie'),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: _selectedCategory,
+                items: const [
+                  DropdownMenuItem(value: 'SWEET', child: Text('Sucré')),
+                  DropdownMenuItem(value: 'SAVORY', child: Text('Salé')),
+                  DropdownMenuItem(value: 'MIXED', child: Text('Mixte')),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _selectedCategory = value);
+                },
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 24),
+
               _buildSectionTitle(Icons.shopping_bag, 'Titre du panier'),
               const SizedBox(height: 8),
               TextFormField(
@@ -86,10 +106,8 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
                   return null;
                 },
               ),
-              
               const SizedBox(height: 24),
-              
-              // Quantité disponible
+
               _buildSectionTitle(Icons.numbers, 'Quantité disponible'),
               const SizedBox(height: 8),
               TextFormField(
@@ -111,10 +129,8 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
                   return null;
                 },
               ),
-              
               const SizedBox(height: 24),
-              
-              // Prix original et prix réduit
+
               Row(
                 children: [
                   Expanded(
@@ -132,7 +148,7 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
                             filled: true,
                             fillColor: Colors.white,
                           ),
-                          onChanged: (value) => _calculerReduction(),
+                          onChanged: (_) => _calculerReduction(),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Requis';
@@ -162,7 +178,7 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
                             filled: true,
                             fillColor: Colors.white,
                           ),
-                          onChanged: (value) => _calculerReduction(),
+                          onChanged: (_) => _calculerReduction(),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Requis';
@@ -178,22 +194,16 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
                   ),
                 ],
               ),
-              
-              // Affichage de la réduction
               if (_showReduction) ...[
                 const SizedBox(height: 12),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: _reductionPourcentage < 30
-                        ? Colors.red[50]
-                        : Colors.orange[50],
+                    color: _reductionPourcentage < 30 ? Colors.red[50] : Colors.orange[50],
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: _reductionPourcentage < 30
-                          ? Colors.red[200]!
-                          : Colors.orange[200]!,
+                      color: _reductionPourcentage < 30 ? Colors.red[200]! : Colors.orange[200]!,
                     ),
                   ),
                   child: Text(
@@ -201,17 +211,13 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: _reductionPourcentage < 30
-                          ? Colors.red[700]
-                          : Colors.orange[700],
+                      color: _reductionPourcentage < 30 ? Colors.red[700] : Colors.orange[700],
                     ),
                   ),
                 ),
               ],
-              
               const SizedBox(height: 24),
-              
-              // Créneau de collecte
+
               _buildSectionTitle(Icons.access_time, 'Créneau de collecte'),
               const SizedBox(height: 8),
               Row(
@@ -227,12 +233,7 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
                       ),
                       readOnly: true,
                       onTap: () => _selectTime(context, _heureDebutController),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Requis';
-                        }
-                        return null;
-                      },
+                      validator: (value) => value == null || value.isEmpty ? 'Requis' : null,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -247,20 +248,13 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
                       ),
                       readOnly: true,
                       onTap: () => _selectTime(context, _heureFinController),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Requis';
-                        }
-                        return null;
-                      },
+                      validator: (value) => value == null || value.isEmpty ? 'Requis' : null,
                     ),
                   ),
                 ],
               ),
-              
               const SizedBox(height: 24),
-              
-              // Description (optionnelle)
+
               const Text(
                 'Description (optionnelle)',
                 style: TextStyle(
@@ -279,14 +273,12 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
                   fillColor: Colors.white,
                 ),
               ),
-              
               const SizedBox(height: 24),
-              
-              // Bouton créer
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _creerPanier,
+                  onPressed: _isLoading ? null : _creerPanier,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -294,20 +286,24 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    'Créer le panier',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text(
+                          'Créer le panier',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
               ),
-              
               const SizedBox(height: 16),
-              
-              // Information en bas
+
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -321,7 +317,7 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Les paniers seront automatiquement visibles par les clients dans la zone de collecte définie. Assurez-vous d\'avoir les produits disponibles avant de créer le panier.',
+                        'Les paniers seront automatiquement visibles par les clients dans la zone de collecte définie.',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.blue[900],
@@ -359,39 +355,73 @@ class _AjouterPanierPageState extends State<AjouterPanierPage> {
       context: context,
       initialTime: TimeOfDay.now(),
     );
-    
+
     if (picked != null) {
       setState(() {
-        controller.text = picked.format(context);
+        final hh = picked.hour.toString().padLeft(2, '0');
+        final mm = picked.minute.toString().padLeft(2, '0');
+        controller.text = '$hh:$mm';
       });
     }
   }
 
-  //  : Retourne le panier créé
-  void _creerPanier() {
-    if (_formKey.currentState!.validate()) {
-      // Créer le nouveau panier
-      final nouveauPanier = {
-        'id': DateTime.now().millisecondsSinceEpoch.toString(), // ID unique
-        'nom': _titreController.text,
-        'heureRetrait': '${_heureDebutController.text} - ${_heureFinController.text}',
-        'disponibles': int.parse(_quantiteController.text),
-        'vendus': 0,
-        'prixOriginal': double.parse(_prixOriginalController.text).toInt(),
-        'prixReduit': double.parse(_prixReduitController.text).toInt(),
-        'actif': true,
-      };
-      
-      // Afficher message de succès
+  Future<void> _creerPanier() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final prixOriginal = double.tryParse(_prixOriginalController.text) ?? 0;
+    final prixReduit = double.tryParse(_prixReduitController.text) ?? 0;
+    final quantite = int.tryParse(_quantiteController.text) ?? 0;
+
+    final start = _toDateTime(_heureDebutController.text);
+    final end = _toDateTime(_heureFinController.text);
+
+    if (start == null || end == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Veuillez sélectionner un créneau valide')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final basket = await _basketService.createBasket(
+        title: _titreController.text.trim(),
+        category: _selectedCategory,
+        originalPrice: prixOriginal,
+        discountedPrice: prixReduit,
+        quantity: quantite,
+        pickupStart: start,
+        pickupEnd: end,
+        // description: _descriptionController.text.trim().isEmpty // Temporarily removed to isolate 400 error
+        //     ? null
+        //     : _descriptionController.text.trim(),
+      );
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Panier créé avec succès !'),
           backgroundColor: Colors.green,
         ),
       );
-      
-      // Retourner le panier créé à la page précédente
-      Navigator.pop(context, nouveauPanier);
+
+      Navigator.pop(context, basket);
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  DateTime? _toDateTime(String timeLabel) {
+    final parts = timeLabel.split(':');
+    if (parts.length != 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day, hour, minute).toUtc();
   }
 }

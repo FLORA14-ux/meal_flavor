@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:meal_flavor/shared/widgets/categorie.dart';
-import 'package:meal_flavor/features/client/panier.dart';
 import 'package:meal_flavor/features/client/detail_panier.dart';
+import 'package:meal_flavor/features/client/panier.dart';
+import 'package:meal_flavor/features/home/basket_service.dart';
+import 'package:meal_flavor/shared/widgets/categorie.dart';
 
 class CategoryItem {
   final String titre;
   final IconData icon;
-  final String apiPath; 
+  final String apiPath;
 
   CategoryItem({
     required this.titre,
@@ -23,86 +24,55 @@ class AccueilPage extends StatefulWidget {
 }
 
 class _AccueilPageState extends State<AccueilPage> {
-  // État : Stocke le chemin API de la catégorie sélectionnée (initialement 'all')
   String _selectedCategoryPath = 'all';
+  bool _isLoading = false;
+  String? _errorMessage;
+  List<Panier> _paniers = [];
+  final _basketService = BasketService();
 
-  // Tableau des catégories
   final List<CategoryItem> _categories = [
     CategoryItem(titre: 'Tous', icon: Icons.all_inclusive, apiPath: 'all'),
-    CategoryItem(
-      titre: 'Boulangerie',
-      icon: Icons.bakery_dining,
-      apiPath: 'BOULANGERIE',
-    ),
-    CategoryItem(titre: 'Restaurant', icon: Icons.restaurant, apiPath: 'RESTAURANT'),
-    CategoryItem(titre: 'Fruits & Légumes', icon: Icons.restaurant_menu, apiPath: 'FRUITS_LEGUMES'),
-    CategoryItem(titre: 'Super marché', icon: Icons.store, apiPath: 'SUPER_MARCHE'),
+    CategoryItem(titre: 'Sucré', icon: Icons.cake_outlined, apiPath: 'SWEET'),
+    CategoryItem(titre: 'Salé', icon: Icons.lunch_dining_outlined, apiPath: 'SAVORY'),
+    CategoryItem(titre: 'Mixte', icon: Icons.local_dining_outlined, apiPath: 'MIXED'),
   ];
 
-  // Données de test pour les paniers
-  final List<Panier> _paniersTest = [
-    Panier(
-      id: '1',
-      nom: 'Boulangerie Le Palmier',
-      categorie: 'BOULANGERIE',
-      imageUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500',
-      prixOriginal: 3000,
-      prixReduit: 1500,
-      reduction: 50,
-      contenuPanier: 'Panier surprise contenant des viennoiseries, pains du jour et pâtisseries. Produits frais de la journée.',
-      heureRetrait: '18h00 - 19h30',
-      adresseRetrait: 'Boulevard du 13 Janvier, Lomé',
-      distance: 1.2,
-      paniersDisponibles: 5,
-    ),
-    Panier(
-      id: '2',
-      nom: 'Restaurant Le Gourmet',
-      categorie: 'RESTAURANT',
-      imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
-      prixOriginal: 5000,
-      prixReduit: 2500,
-      reduction: 52,
-      contenuPanier: 'Plat du jour avec accompagnements. Cuisine locale fraîche et savoureuse.',
-      heureRetrait: '19h00 - 20h30',
-      adresseRetrait: 'Avenue de la Paix, Lomé',
-      distance: 0.8,
-      paniersDisponibles: 3,
-    ),
-    Panier(
-      id: '3',
-      nom: 'Fruits & Légumes Bio',
-      categorie: 'FRUITS_LEGUMES',
-      imageUrl: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=500',
-      prixOriginal: 2000,
-      prixReduit: 1000,
-      reduction: 50,
-      contenuPanier: 'Assortiment de fruits et légumes frais de saison. Bio et local.',
-      heureRetrait: '17h00 - 18h00',
-      adresseRetrait: 'Marché central, Lomé',
-      distance: 2.1,
-      paniersDisponibles: 8,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadBaskets();
+  }
 
-  // Fonction appelée lorsqu'on clique sur une catégorie
   void _selectCategory(String apiPath) {
     if (_selectedCategoryPath == apiPath) return;
 
     setState(() {
       _selectedCategoryPath = apiPath;
     });
+    _loadBaskets();
   }
 
-  // ✅ FONCTION AJOUTÉE : Filtrer les paniers selon la catégorie sélectionnée
-  List<Panier> _getFilteredPaniers() {
-    if (_selectedCategoryPath == 'all') {
-      return _paniersTest; // Afficher tous les paniers
-    } else {
-      // Filtrer les paniers par catégorie
-      return _paniersTest
-          .where((panier) => panier.categorie == _selectedCategoryPath)
-          .toList();
+  Future<void> _loadBaskets() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final baskets = await _basketService.fetchBaskets(category: _selectedCategoryPath);
+      if (!mounted) return;
+      setState(() {
+        _paniers = baskets;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString().replaceAll('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -118,11 +88,9 @@ class _AccueilPageState extends State<AccueilPage> {
           ),
         ),
         leading: const Icon(Icons.fastfood),
-        
       ),
       body: Column(
         children: [
-          // Titre principal et sous-titre
           Padding(
             padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
             child: Column(
@@ -145,8 +113,6 @@ class _AccueilPageState extends State<AccueilPage> {
               ],
             ),
           ),
-
-          // Section de recherche
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
@@ -173,8 +139,6 @@ class _AccueilPageState extends State<AccueilPage> {
               ],
             ),
           ),
-
-          // Gestion des catégories en scroll horizontal
           SizedBox(
             height: 50,
             child: ListView.builder(
@@ -190,16 +154,12 @@ class _AccueilPageState extends State<AccueilPage> {
                     titre: category.titre,
                     icon: category.icon,
                     isSelected: isSelected,
-                    onTap: () {
-                      _selectCategory(category.apiPath);
-                    },
+                    onTap: () => _selectCategory(category.apiPath),
                   ),
                 );
               },
             ),
           ),
-
-          // Titre de section
           const Padding(
             padding: EdgeInsets.only(left: 16.0, top: 16.0, bottom: 8.0),
             child: Align(
@@ -213,53 +173,75 @@ class _AccueilPageState extends State<AccueilPage> {
               ),
             ),
           ),
-
-          // ✅ MODIFIÉ : Liste des paniers filtrés
           Expanded(
-            child: _getFilteredPaniers().isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_off,
-                          size: 60,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Aucun panier disponible',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey[600],
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _errorMessage != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+                              const SizedBox(height: 12),
+                              Text(
+                                _errorMessage!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _loadBaskets,
+                                child: const Text('Réessayer'),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'dans cette catégorie',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
+                      )
+                    : _paniers.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.search_off,
+                                  size: 60,
+                                  color: Colors.grey[400],
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Aucun panier disponible',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'dans cette catégorie',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(8.0),
+                            itemCount: _paniers.length,
+                            itemBuilder: (context, index) {
+                              final panier = _paniers[index];
+                              return _buildPanierCard(panier);
+                            },
                           ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(8.0),
-                    itemCount: _getFilteredPaniers().length,
-                    itemBuilder: (context, index) {
-                      final panier = _getFilteredPaniers()[index];
-                      return _buildPanierCard(panier);
-                    },
-                  ),
           ),
         ],
       ),
     );
   }
 
-  // Widget pour afficher une carte de panier
   Widget _buildPanierCard(Panier panier) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -269,7 +251,6 @@ class _AccueilPageState extends State<AccueilPage> {
       ),
       child: InkWell(
         onTap: () {
-          // Navigation vers la page de détails
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -281,7 +262,6 @@ class _AccueilPageState extends State<AccueilPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image avec badge de réduction
             Stack(
               children: [
                 ClipRRect(
@@ -306,7 +286,6 @@ class _AccueilPageState extends State<AccueilPage> {
                     },
                   ),
                 ),
-                // Badge de réduction
                 Positioned(
                   top: 12,
                   right: 12,
@@ -331,34 +310,30 @@ class _AccueilPageState extends State<AccueilPage> {
                 ),
               ],
             ),
-            
-            // Informations du panier
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Distance
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        size: 16,
-                        color: Colors.grey[600],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${panier.distance} km',
-                        style: TextStyle(
+                  if (panier.distance > 0)
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on,
+                          size: 16,
                           color: Colors.grey[600],
-                          fontSize: 12,
                         ),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${panier.distance} km',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 8),
-                  
-                  // Nom du commerce
                   Text(
                     panier.nom,
                     style: const TextStyle(
@@ -367,8 +342,6 @@ class _AccueilPageState extends State<AccueilPage> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  
-                  // Catégorie
                   Text(
                     panier.categorie,
                     style: TextStyle(
@@ -377,8 +350,6 @@ class _AccueilPageState extends State<AccueilPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  
-                  // Heure de retrait
                   Row(
                     children: [
                       Icon(
@@ -397,12 +368,9 @@ class _AccueilPageState extends State<AccueilPage> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  
-                  // Prix
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Prix barré
                       Text(
                         '${panier.prixOriginal.toInt()} FCFA',
                         style: TextStyle(
@@ -411,7 +379,6 @@ class _AccueilPageState extends State<AccueilPage> {
                           fontSize: 14,
                         ),
                       ),
-                      // Prix réduit
                       Text(
                         '${panier.prixReduit.toInt()} FCFA',
                         style: const TextStyle(
@@ -423,8 +390,6 @@ class _AccueilPageState extends State<AccueilPage> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  
-                  // Paniers restants
                   Text(
                     '${panier.paniersDisponibles} restants',
                     style: TextStyle(
@@ -439,6 +404,6 @@ class _AccueilPageState extends State<AccueilPage> {
           ],
         ),
       ),
-    );  
+    );
   }
 }
